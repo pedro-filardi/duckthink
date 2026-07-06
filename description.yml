@@ -1,0 +1,42 @@
+# Metadata for the DuckDB Community Extensions repository. Submitting = a PR to
+# duckdb/community-extensions that adds ONLY extensions/duckthink/description.yml
+# (this file), pointing repo.ref at a pinned, clean-building commit SHA.
+extension:
+  name: duckthink
+  description: ASK() — natural-language SQL for DuckDB, grounded in your dbt Semantic Layer
+  version: 0.1.0
+  language: C++
+  build: cmake
+  license: MIT
+  # WebAssembly has no sockets/OpenSSL (an HTTPS/LLM extension can't run there); Windows
+  # (MSVC + mingw) OpenSSL/socket linkage is unvalidated, so it's excluded for now. Builds
+  # and tests pass on linux (amd64/arm64) and macOS (amd64/arm64), validated in CI.
+  excluded_platforms: "wasm_mvp;wasm_eh;wasm_threads;windows_amd64;windows_amd64_mingw"
+  maintainers:
+    - pedro-filardi
+
+repo:
+  github: pedro-filardi/duckthink
+  # IMPORTANT: update to the final pinned commit SHA before opening the PR.
+  ref: 55c80bdff9848f5015eb6dca0641621415ea60e6
+
+docs:
+  hello_world: |
+    CREATE SECRET oai (TYPE openai, API_KEY 'sk-...');
+    CREATE MODEL('gpt', 'gpt-4o-mini', 'openai');
+    SET ask_model = 'gpt';
+    -- Ground ASK in your dbt Semantic Layer: metrics, entities and tags come from the
+    -- manifest, and a tag scopes the question to a business domain — no ON (...) needed.
+    SET ask_dbt_semantic_manifest = 'target/manifest.json';
+    SET ask_dbt_scope_tags = 'support';
+    ASK('average ticket resolution time by team this month')
+      RETURN (team VARCHAR, avg_hours DECIMAL);
+  extended_description: |
+    duckthink adds ASK() — natural-language-to-SQL for DuckDB, grounded in your dbt Semantic
+    Layer. Point it at a dbt manifest (SET ask_dbt_semantic_manifest) and generation uses your real
+    semantic models, metrics, entities and tags — so "gross margin" or "attrition rate" resolve
+    to their exact definitions instead of the model's best guess, and dbt tags scope a question
+    to a business domain. ASK writes exactly one read-only SELECT over the tables in scope,
+    executes it, and returns typed rows. It runs over the plain DuckDB catalog with no dbt too,
+    and optional embedding-based table retrieval (SET ask_embed_model) scales it to large
+    schemas. Works with OpenAI, Ollama or Anthropic.

@@ -1,0 +1,86 @@
+# name: test/sql/duckthink.test
+# description: ASK-only — model registry + guards; the removed AI operators now error
+# group: [sql]
+
+# Live ASK generation needs a provider, so this file only covers offline behavior:
+# model DDL, the no-model guards, metrics, and that the old operators no longer exist.
+require duckthink
+
+# --- provider credentials + model registry --------------------------------
+
+statement ok
+CREATE SECRET oai (TYPE openai, API_KEY 'sk-test');
+
+statement ok
+CREATE MODEL('m', 'gpt-4o-mini', 'openai');
+
+query I
+SELECT count(*) FROM llm_models() WHERE name = 'm';
+----
+1
+
+# CREATE OR REPLACE MODEL re-declares in place (still one row)
+statement ok
+CREATE OR REPLACE MODEL('m', 'gpt-4o', 'openai');
+
+query I
+SELECT count(*) FROM llm_models() WHERE name = 'm';
+----
+1
+
+statement ok
+DROP MODEL m;
+
+query I
+SELECT count(*) FROM llm_models() WHERE name = 'm';
+----
+0
+
+# --- ASK guards -----------------------------------------------------------
+
+statement ok
+CREATE TABLE t (a INTEGER, b VARCHAR);
+
+# No model configured -> a clear bind-time error (not a crash)
+statement error
+SELECT * FROM ask('count the rows', 't', 'n BIGINT');
+----
+no model configured
+
+# ask_sql is subject to the same guard
+statement error
+SELECT sql FROM ask_sql('count the rows', 't', 'n BIGINT');
+----
+no model configured
+
+# --- metrics --------------------------------------------------------------
+
+# duckthink_metrics() is queryable
+statement ok
+SELECT * FROM duckthink_metrics();
+
+# --- the refocus: the old operators no longer exist -----------------------
+
+statement error
+SELECT semantic_similarity('a', 'b');
+----
+
+statement error
+SELECT ai_embed('x');
+----
+
+statement error
+SELECT ai_extract('x', 'y');
+----
+
+statement error
+SELECT ai_agg(['x'], 'y');
+----
+
+statement error
+SELECT * FROM semantic_join('SELECT 1', 'SELECT 1');
+----
+
+statement error
+SELECT * FROM llm_join('SELECT 1', 'SELECT 1');
+----

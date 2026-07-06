@@ -1,0 +1,38 @@
+#
+# This workflow calls the main distribution pipeline from DuckDB to build, test and (optionally) release the extension
+#
+name: Main Extension Distribution Pipeline
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/main' && github.sha || '' }}
+  cancel-in-progress: true
+
+# duckthink is pure C++: DuckDB's bundled httplib for transport + OpenSSL (from vcpkg,
+# see vcpkg.json) for https. No local inference, no ONNX/Rust, no build-time downloads —
+# so the standard cross-platform matrix builds. WebAssembly is excluded: it has no BSD
+# sockets / OpenSSL, and an HTTPS/LLM extension can't run there. The SQL tests are offline
+# (registration, guards, error paths) so they pass in CI without any API key.
+jobs:
+  duckdb-stable-build:
+    name: Build extension binaries
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v1.5-variegata
+    with:
+      duckdb_version: v1.5.4
+      ci_tools_version: v1.5-variegata
+      extension_name: duckthink
+      exclude_archs: 'wasm_mvp;wasm_eh;wasm_threads'
+
+  code-quality-check:
+    name: Code Quality Check
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@v1.5-variegata
+    with:
+      duckdb_version: v1.5.4
+      ci_tools_version: v1.5-variegata
+      extension_name: duckthink
+      # format only for now; clang-tidy (WarningsAsErrors:*) would require a broad
+      # C-style-cast / global-variable cleanup across the codebase — tracked as future work.
+      format_checks: 'format'

@@ -1,0 +1,26 @@
+# --- DuckDB extension template defaults ---
+build
+.idea
+cmake-build-debug
+duckdb_unittest_tempdir/
+.DS_Store
+testext
+test/python/__pycache__/
+.Rhistory
+/.cache/
+
+# --- secrets / local state (never commit) ---
+.openai_key
+*.duckdb
+*.db
+scratch/
+
+# --- local dbt projects & demos (used to exercise ASK; not part of the extension) ---
+dbt_demo/
+dbt_ai_linkedin/
+dbt_semantic_demo/
+
+# --- stale local data dirs from earlier experiments (never committed) ---
+/data/
+/models/
+/third_party/
